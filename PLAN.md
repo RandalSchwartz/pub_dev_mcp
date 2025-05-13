@@ -41,8 +41,8 @@ This document outlines the steps to implement the Pub.dev MCP Server, with testa
     * Retrieves `query`, `page`, and `sort` from the arguments.
     * Instantiates `PubClient` (or uses a shared instance).
     * Calls `PubClient.search()` with the provided arguments.
-    * Formats the `List<PackageResult>` (from `results.packages`) returned by `pub_api_client` into a user-friendly string or structured `TextContent`. This should include package names, brief descriptions, and potentially version numbers.
-    * Include information about pagination if available from the `pub_api_client` response (e.g., current page, if there's a next page).
+    * Formats the `List<PackageResult>` (from `results.packages`) returned by `pub_api_client` into a user-friendly string or structured `TextContent`. This should include package names. (Note: `PackageResult` from `search` does not readily provide version numbers; these are omitted in the current implementation).
+    * Include information about pagination by suggesting the next page number if a full page of results is returned.
     * Returns a `CallToolResult` with the formatted content or an error message.
 * **Testable Components/Outcomes:**
   * The `searchPubDev` tool is listed when an MCP client queries server capabilities.
