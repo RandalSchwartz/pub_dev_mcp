@@ -49,10 +49,9 @@ Future<void> main(List<String> arguments) async {
       final query = args!['query'] as String;
       final page = args['page'] as int?;
       final sortString = args['sort'] as String?;
+      final receivedArgs = args; // For logging
 
-      print(
-        '[searchPubDev tool called] Query: "$query", Page: $page, Sort: $sortString',
-      );
+      print('[searchPubDev tool called] Args: $receivedArgs');
 
       final client = PubClient();
       SearchOrder? searchOrder;
@@ -63,6 +62,7 @@ Future<void> main(List<String> arguments) async {
             (e) => e.name == sortString.toLowerCase(),
           );
         } catch (e) {
+          print('[searchPubDev] Invalid sort parameter "$sortString": $e');
           return CallToolResult(
             content: [
               TextContent(
@@ -76,10 +76,16 @@ Future<void> main(List<String> arguments) async {
 
       try {
         final currentPage = page ?? 1;
+        print(
+          '[searchPubDev] Calling API with query="$query", page=$currentPage, sort=${searchOrder?.name ?? 'top'}',
+        );
         final results = await client.search(
           query,
           page: currentPage,
           sort: searchOrder ?? SearchOrder.top,
+        );
+        print(
+          '[searchPubDev] API call successful. Found ${results.packages.length} packages.',
         );
 
         if (results.packages.isEmpty) {
@@ -106,7 +112,7 @@ Future<void> main(List<String> arguments) async {
 
         return CallToolResult(content: [TextContent(text: responseText)]);
       } on FormatException catch (e) {
-        print('FormatException during pub_api_client.search: $e');
+        print('[searchPubDev] FormatException during API call: $e');
         return CallToolResult(
           content: [
             TextContent(
@@ -116,7 +122,7 @@ Future<void> main(List<String> arguments) async {
           ],
         );
       } catch (e) {
-        print('Error during pub_api_client.search: $e');
+        print('[searchPubDev] Exception during API call: $e');
         return CallToolResult(
           content: [
             TextContent(text: 'Error: Failed to search pub.dev. Details: $e'),
@@ -139,26 +145,116 @@ Future<void> main(List<String> arguments) async {
     },
     callback: ({args, extra}) async {
       final packageName = args!['packageName'] as String;
-      print('[getPackageDetails tool called] PackageName: "$packageName"');
+      final receivedArgs = args; // For logging
+      print('[getPackageDetails tool called] Args: $receivedArgs');
 
       final client = PubClient();
       final detailsOutput = <String>[];
 
       try {
-        // 1. Get Basic Package Information
-        // The object returned by client.packageInfo() is of type PubPackage.
-        // We know .name, .version, .description are available.
+        print('[getPackageDetails] Fetching packageInfo for "$packageName"...');
         final packageData = await client.packageInfo(packageName);
+        print(
+          '[getPackageDetails] Successfully fetched packageInfo for "$packageName".',
+        );
 
-        detailsOutput.add('Package: ${packageData.name}');
-        detailsOutput.add('Latest Version: ${packageData.version}');
-        detailsOutput.add('Description: ${packageData.description}');
+        detailsOutput.add('**Package:** ${packageData.name}');
+        detailsOutput.add('**Latest Version:** ${packageData.version}');
+        detailsOutput.add('**Description:** ${packageData.description}');
+        detailsOutput.add(
+          '**Homepage:** ${packageData.latest.pubspec.homepage ?? 'N/A'}',
+        );
+        detailsOutput.add(
+          '**Repository:** ${packageData.latest.pubspec.repository ?? 'N/A'}',
+        );
+        detailsOutput.add(
+          '**Issue Tracker:** ${packageData.latest.pubspec.issueTracker ?? 'N/A'}',
+        );
 
-        // Omitted .publisher, .archiveUrl, .pubspec for now due to previous errors
-        // and uncertainty about their direct availability/structure on PubPackage.
+        // Dependencies
+        final pubspec = packageData.latest.pubspec;
+        if (pubspec.dependencies.isNotEmpty) {
+          detailsOutput.add('\n--- Dependencies ---');
+          pubspec.dependencies.forEach((name, constraint) {
+            detailsOutput.add('- $name: $constraint');
+          });
+        } else {
+          detailsOutput.add('\n**Dependencies:** None listed.');
+        }
+
+        if (pubspec.devDependencies.isNotEmpty) {
+          detailsOutput.add('\n--- Dev Dependencies ---');
+          pubspec.devDependencies.forEach((name, constraint) {
+            detailsOutput.add('- $name: $constraint');
+          });
+        }
+
+        if (pubspec.dependencyOverrides.isNotEmpty) {
+          detailsOutput.add('\n--- Dependency Overrides ---');
+          pubspec.dependencyOverrides.forEach((name, constraint) {
+            detailsOutput.add('- $name: $constraint');
+          });
+        }
+
+        // Score
+        try {
+          print(
+            '[getPackageDetails] Fetching packageScore for "$packageName"...',
+          );
+          final score = await client.packageScore(packageName);
+          print(
+            '[getPackageDetails] Successfully fetched packageScore for "$packageName".',
+          );
+          detailsOutput.add('\n--- Score ---');
+          detailsOutput.add('**Likes:** ${score.likeCount}');
+          detailsOutput.add(
+            '**Pub Points:** ${score.grantedPoints} / ${score.maxPoints}',
+          );
+          detailsOutput.add(
+            '**Popularity:** ${score.popularityScore != null ? '${(score.popularityScore! * 100).toStringAsFixed(0)}%' : 'N/A'}',
+          );
+        } catch (e) {
+          print(
+            '[getPackageDetails] Could not retrieve score for "$packageName": $e',
+          );
+          detailsOutput.add('\n**Score:** Not available (error: $e)');
+        }
+
+        // Version History
+        try {
+          print(
+            '[getPackageDetails] Fetching packageVersions for "$packageName"...',
+          );
+          final versions = await client.packageVersions(packageName);
+          print(
+            '[getPackageDetails] Successfully fetched packageVersions for "$packageName". Found ${versions.length} versions.',
+          );
+          if (versions.isNotEmpty) {
+            detailsOutput.add('\n--- Version History (Recent) ---');
+            if (versions.length > 5) {
+              detailsOutput.add(
+                '${versions.take(5).join(', ')}, ...and ${versions.length - 5} more.',
+              );
+            } else {
+              detailsOutput.add(versions.join(', '));
+            }
+          } else {
+            detailsOutput.add('\n**Versions:** No version history found.');
+          }
+        } catch (e) {
+          print(
+            '[getPackageDetails] Could not retrieve versions for "$packageName": $e',
+          );
+          detailsOutput.add('\n**Version History:** Not available (error: $e)');
+        }
+
+        return CallToolResult(
+          content: [TextContent(text: detailsOutput.join('\n'))],
+        );
       } catch (e) {
-        // Handle "Not Found" specifically for the primary package info call
+        // Catches errors from client.packageInfo()
         if (e.toString().toLowerCase().contains('not found')) {
+          print('[getPackageDetails] Package "$packageName" not found: $e');
           return CallToolResult(
             content: [
               TextContent(
@@ -167,8 +263,9 @@ Future<void> main(List<String> arguments) async {
             ],
           );
         }
-        // For other errors during packageInfo fetch, return a generic error for this tool
-        print('Error fetching core packageInfo for "$packageName": $e');
+        print(
+          '[getPackageDetails] Error fetching core packageInfo for "$packageName": $e',
+        );
         return CallToolResult(
           content: [
             TextContent(
@@ -178,49 +275,6 @@ Future<void> main(List<String> arguments) async {
           ],
         );
       }
-
-      // If core info was fetched, try to get score and versions as supplementary details
-      // These will append to detailsOutput or add an "N/A" type message if they fail.
-      try {
-        final score = await client.packageScore(packageName);
-        detailsOutput.add('--- Score ---');
-        detailsOutput.add('Likes: ${score.likeCount}'); // Is non-nullable int
-        detailsOutput.add(
-          'Pub Points: ${score.grantedPoints} / ${score.maxPoints}', // Are non-nullable int
-        );
-        detailsOutput.add(
-          // popularityScore is nullable double (double?)
-          'Popularity: ${score.popularityScore != null ? '${(score.popularityScore! * 100).toStringAsFixed(0)}%' : 'N/A'}',
-        );
-      } catch (e) {
-        print('Could not retrieve score for "$packageName": $e');
-        detailsOutput.add('Score: Not available.');
-      }
-
-      try {
-        final versions = await client.packageVersions(
-          packageName,
-        ); // Returns List<String>
-        if (versions.isNotEmpty) {
-          detailsOutput.add('--- Version History (Recent) ---');
-          if (versions.length > 5) {
-            detailsOutput.add(
-              '${versions.take(5).join(', ')}, ...and ${versions.length - 5} more.',
-            );
-          } else {
-            detailsOutput.add(versions.join(', '));
-          }
-        } else {
-          detailsOutput.add('Versions: No version history found.');
-        }
-      } catch (e) {
-        print('Could not retrieve versions for "$packageName": $e');
-        detailsOutput.add('Version History: Not available.');
-      }
-
-      return CallToolResult(
-        content: [TextContent(text: detailsOutput.join('\n'))],
-      );
     },
   );
 
