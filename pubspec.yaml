@@ -8,6 +8,8 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
+  mcp_dart: ^0.5.0
+  pub_api_client: ^2.2.0 # TODO: Replace with actual latest version if known or use a constraint like ^A.B.C
   # path: ^1.8.0
 
 dev_dependencies:
