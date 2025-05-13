@@ -21,7 +21,7 @@ This document outlines the steps to implement the Pub.dev MCP Server, with testa
   * Instantiate `PubClient` from the `pub_api_client` package.
   * Familiarize with `PubClient.search()` method for package searching (parameters: query, tags, topics, sort, page).
   * Familiarize with `PubClient.packageInfo()`, `PubClient.packageScore()`, `PubClient.packageVersions()` etc., for fetching various package details.
-  * Understand how `pub_api_client` handles errors (e.g., exceptions thrown) and how to catch them appropriately.
+  * Understand how `pub_api_client` handles errors (e.g., exceptions thrown) and how to catch them appropriately. (Observed: `packageInfo` throws "Not Found" exception for non-existent packages; `search` returns empty list for no results).
 * **Testable Components/Outcomes:**
   * Basic tests demonstrating successful instantiation of `PubClient`.
   * Tests for calling `PubClient.search()` with various queries and parameters, verifying expected response structures (or error handling).
@@ -41,13 +41,13 @@ This document outlines the steps to implement the Pub.dev MCP Server, with testa
     * Retrieves `query`, `page`, and `sort` from the arguments.
     * Instantiates `PubClient` (or uses a shared instance).
     * Calls `PubClient.search()` with the provided arguments.
-    * Formats the `SearchPages` (or similar object) returned by `pub_api_client` into a user-friendly string or structured `TextContent`. This should include package names, brief descriptions, and potentially version numbers.
+    * Formats the `List<PackageResult>` (from `results.packages`) returned by `pub_api_client` into a user-friendly string or structured `TextContent`. This should include package names, brief descriptions, and potentially version numbers.
     * Include information about pagination if available from the `pub_api_client` response (e.g., current page, if there's a next page).
     * Returns a `CallToolResult` with the formatted content or an error message.
 * **Testable Components/Outcomes:**
   * The `searchPubDev` tool is listed when an MCP client queries server capabilities.
   * Calling the tool via an MCP client with a valid search query returns a formatted list of matching packages.
-  * Calling the tool with an empty or problematic query returns an appropriate error message via MCP.
+  * Calling the tool with an empty or problematic query returns an appropriate message via MCP (e.g., "No packages found" for empty search results from a valid API call, or an MCP error for actual API failures/invalid input).
 
 ## Step 4: Implement "Get Package Details" Tool
 
@@ -59,18 +59,18 @@ This document outlines the steps to implement the Pub.dev MCP Server, with testa
   * Implement the tool's callback function:
     * Retrieves the `packageName` from the arguments.
     * Instantiates `PubClient` (or uses a shared instance).
-    * Calls relevant `PubClient` methods (e.g., `PubClient.packageInfo()`, `PubClient.packageScore()`, `PubClient.packageVersions()`) to gather comprehensive details.
+    * Calls relevant `PubClient` methods (e.g., `PubClient.packageInfo()`, `PubClient.packageScore()`, `PubClient.packageVersions()`) to gather comprehensive details. Must use `try-catch` for `packageInfo()` to handle "Not Found" exceptions.
     * Formats the package details (e.g., description, version, author, dependencies) into a user-friendly string or structured `TextContent`.
     * Returns a `CallToolResult` with the formatted content or an error message (e.g., if the package is not found).
 * **Testable Components/Outcomes:**
   * The `getPackageDetails` tool is listed when an MCP client queries server capabilities.
   * Calling the tool via an MCP client with a valid package name returns formatted package details.
-  * Calling the tool with an invalid/non-existent package name returns a "package not found" error message (or similar) via MCP.
+  * Calling the tool with an invalid/non-existent package name returns a "package not found" error message (or similar) via MCP (achieved by catching the "Not Found" exception from `packageInfo()`).
 
 ## Step 5: Error Handling, Logging, and Refinement
 
 * **Tasks:**
-  * Review and enhance error handling across all components (API client, tool callbacks).
+  * Review and enhance error handling across all components (API client, tool callbacks), paying special attention to "Not Found" exceptions from `packageInfo()` and handling potential `null` values from API responses (e.g., `packageScore().popularityScore`).
   * Implement basic logging within the server for diagnostics (e.g., incoming tool calls, API request/response summaries, errors).
   * Refine the formatting of all tool outputs for clarity and consistency.
   * Ensure all non-functional requirements from [`PRD.md`](PRD.md:1) (performance, security considerations like input sanitization if applicable, usability) are addressed.
