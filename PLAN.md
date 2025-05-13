@@ -72,7 +72,9 @@ This document outlines the steps to implement the Pub.dev MCP Server, with testa
 * **Tasks:**
   * Review and enhance error handling across all components (API client, tool callbacks), paying special attention to "Not Found" exceptions from `packageInfo()` and handling potential `null` values from API responses (e.g., `packageScore().popularityScore`).
   * Implement basic logging within the server for diagnostics (e.g., incoming tool calls, API request/response summaries, errors).
-  * Refine the formatting of all tool outputs for clarity and consistency.
+  * Refine the formatting of all tool outputs for clarity and consistency:
+    * For `searchPubDev`: Investigate if `PackageResult` offers a reliable description field to include alongside package names. Confirm that version numbers are not easily accessible from `PackageResult` and document this limitation if it persists.
+    * For `getPackageDetails`: Review the current multi-line string output. Consider if more structured formatting (e.g., Markdown key-value pairs) would improve readability. Decide whether to further investigate accessing `publisher`, `archiveUrl`, and `pubspec` details, or document their current omission.
   * Ensure all non-functional requirements from [`PRD.md`](PRD.md:1) (performance, security considerations like input sanitization if applicable, usability) are addressed.
 * **Testable Components/Outcomes:**
   * The server handles various error conditions (API errors, invalid tool inputs) gracefully and provides informative error messages to the MCP client.
