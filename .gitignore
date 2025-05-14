@@ -3,3 +3,5 @@
 .dart_tool/
 
 pub_dev_mcp_server
+
+bin/pub_dev_mcp.dart
