@@ -1,3 +1,5 @@
+import 'dart:async'; // Added for Completer
+
 import 'package:mcp_dart/mcp_dart.dart';
 import 'package:pub_api_client/pub_api_client.dart';
 
@@ -279,6 +281,8 @@ Future<void> main(List<String> arguments) async {
   try {
     server.connect(transport);
     print('Pub.dev MCP Server listening on stdio...');
+    // Keep the server alive indefinitely
+    await Completer().future;
   } catch (e, s) {
     print('Error starting Pub.dev MCP Server: $e');
     print('Stack trace: $s');
