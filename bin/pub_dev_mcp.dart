@@ -49,7 +49,7 @@ Future<void> main(List<String> arguments) async {
       final query = args!['query'] as String;
       final page = args['page'] as int?;
       final sortString = args['sort'] as String?;
-      final receivedArgs = args; // For logging
+      final receivedArgs = args;
 
       print('[searchPubDev tool called] Args: $receivedArgs');
 
@@ -98,7 +98,7 @@ Future<void> main(List<String> arguments) async {
 
         final packageList = results.packages
             .map((pkg) {
-              return '- ${pkg.package}'; // pkg.version is not directly available on PackageResult
+              return '- ${pkg.package}';
             })
             .join('\n');
 
@@ -145,7 +145,7 @@ Future<void> main(List<String> arguments) async {
     },
     callback: ({args, extra}) async {
       final packageName = args!['packageName'] as String;
-      final receivedArgs = args; // For logging
+      final receivedArgs = args;
       print('[getPackageDetails tool called] Args: $receivedArgs');
 
       final client = PubClient();
@@ -171,7 +171,6 @@ Future<void> main(List<String> arguments) async {
           '**Issue Tracker:** ${packageData.latest.pubspec.issueTracker ?? 'N/A'}',
         );
 
-        // Dependencies
         final pubspec = packageData.latest.pubspec;
         if (pubspec.dependencies.isNotEmpty) {
           detailsOutput.add('\n--- Dependencies ---');
@@ -196,7 +195,6 @@ Future<void> main(List<String> arguments) async {
           });
         }
 
-        // Score
         try {
           print(
             '[getPackageDetails] Fetching packageScore for "$packageName"...',
@@ -220,7 +218,6 @@ Future<void> main(List<String> arguments) async {
           detailsOutput.add('\n**Score:** Not available (error: $e)');
         }
 
-        // Version History
         try {
           print(
             '[getPackageDetails] Fetching packageVersions for "$packageName"...',
@@ -252,7 +249,6 @@ Future<void> main(List<String> arguments) async {
           content: [TextContent(text: detailsOutput.join('\n'))],
         );
       } catch (e) {
-        // Catches errors from client.packageInfo()
         if (e.toString().toLowerCase().contains('not found')) {
           print('[getPackageDetails] Package "$packageName" not found: $e');
           return CallToolResult(
